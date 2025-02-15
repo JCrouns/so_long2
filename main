@@ -1,0 +1,313 @@
+/* ************************************************************************** */
+/*                                                                            */
+/*                                                        :::      ::::::::   */
+/*   main.c                                             :+:      :+:    :+:   */
+/*                                                    +:+ +:+         +:+     */
+/*   By: jait-chd <jait-chd@student.1337.ma>        +#+  +:+       +#+        */
+/*                                                +#+#+#+#+#+   +#+           */
+/*   Created: 2025/02/15 21:36:33 by jait-chd          #+#    #+#             */
+/*   Updated: 2025/02/15 22:02:27 by jait-chd         ###   ########.fr       */
+/*                                                                            */
+/* ************************************************************************** */
+
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <fcntl.h>
+#include <string.h>
+#include "get_next_line.h"
+#include "/usr/include/minilibx-linux/mlx.h"
+#define PLAYER 'P'
+#define BOSS 'B'
+#define COLLECTABLE 'C'
+#define WALL '1'
+#define SPACE '0'
+#define EXIT 'E'
+
+int player_row = -1;
+int player_col = -1;
+int collected_items = 0;
+
+void map_check_wall(char **tab, int rows, int cols) {
+    int c = 0;
+    while (c < cols) {
+        if (tab[0][c] != WALL || tab[rows - 1][c] != WALL) {
+            perror("Map must be surrounded by walls.\n");
+            exit(1);
+        }
+        c++;
+    }
+
+    int r = 0;
+    while (r < rows) {
+        if (tab[r][0] != WALL || tab[r][cols - 1] != WALL) {
+            perror("Error: Map must be surrounded by walls.\n");
+            exit(1);
+        }
+        r++;
+    }
+}
+
+void map_check_player(char **tab, int rows, int cols) {
+    int player_count = 0;
+    int r = 0;
+    while (r < rows) {
+        int c = 0;
+        while (c < cols) {
+            if (tab[r][c] == PLAYER) {
+                player_count++;
+            }
+            c++;
+        }
+        r++;
+    }
+
+    if (player_count != 1) {
+        perror("Must be only one player\n");
+        exit(1);
+    }
+}
+
+void map_check_collectables(char **tab, int rows, int cols) {
+    int collectable_count = 0;
+    int r = 0;
+    while (r < rows) {
+        int c = 0;
+        while (c < cols) {
+            if (tab[r][c] == COLLECTABLE) {
+                collectable_count++;
+            }
+            c++;
+        }
+        r++;
+    }
+
+    if (collectable_count < 1) {
+        perror("error on number of collectables\n");
+        exit(1);
+    }
+}
+
+void ghayermarghoub_fiha(char **tab, int rows, int cols) {
+    int r = 0;
+    while (r < rows) {
+        int c = 0;
+        while (c < cols) {
+            char ch = tab[r][c];
+            if (ch != PLAYER && ch != COLLECTABLE && ch != WALL && ch != SPACE && ch != EXIT) {
+                perror("Invalid character in the map\n");
+                exit(1);
+            }
+            c++;
+        }
+        r++;
+    }
+}
+
+void free_map(char **map, int rows) {
+    int r = 0;
+    while (r < rows) {
+        free(map[r]);
+        r++;
+    }
+    free(map);
+}
+
+void print_map(char **tab, int rows, int cols) {
+    int r = 0;
+    while (r < rows) {
+        printf("%s\n", tab[r]);
+        r++;
+    }
+    printf("Collected Items: %d\n", collected_items);
+}
+
+void find_player_position(char **tab, int rows, int cols) {
+    int r = 0;
+    while (r < rows) {
+        int c = 0;
+        while (c < cols) {
+            if (tab[r][c] == PLAYER) {
+               player_row = r;
+                player_col = c;
+                return;
+            }
+            c++;
+        }
+        r++;
+    }
+}
+int move_player(char **tab, int rows, int cols, char direction) {
+    int new_row = player_row;
+    int new_col = player_col;
+
+    if (direction == 'W') {
+        new_row--;
+    } else if (direction == 'S') {
+        new_row++;
+    } else if (direction == 'A') {
+        new_col--;
+    } else if (direction == 'D') {
+        new_col++;
+    }
+
+    if (new_row < 0 || new_row >= rows || new_col < 0 || new_col >= cols || tab[new_row][new_col] == WALL) {
+        return 0;
+    }
+
+    tab[player_row][player_col] = SPACE;
+    player_row = new_row;
+    player_col = new_col;
+
+    if (tab[player_row][player_col] == COLLECTABLE) {
+        collected_items++;
+        tab[player_row][player_col] = SPACE;
+    }
+
+    if (tab[player_row][player_col] == EXIT) {
+        printf("You have reached the exit%d\n", collected_items);
+        return 2;
+    }
+
+    tab[player_row][player_col] = PLAYER;
+    return 1;
+}
+
+void draw_map(void *mlx, void *mlx_win, char **tab, int rows, int cols) {
+    int x, y;
+    for (y = 0; y < rows; y++) {
+        for (x = 0; x < cols; x++) {
+            if (tab[y][x] == WALL) {
+                // Draw wall
+                mlx_string_put(mlx, mlx_win, x * 64, y * 64, 0xFFFFFF, "W");
+            } else if (tab[y][x] == SPACE) {
+                // Draw space
+                mlx_string_put(mlx, mlx_win, x * 64, y * 64, 0x000000, " ");
+            } else if (tab[y][x] == PLAYER) {
+                // Draw player
+                mlx_string_put(mlx, mlx_win, x * 64, y * 64, 0x00FF00, "P");
+            } else if (tab[y][x] == COLLECTABLE) {
+                // Draw collectable
+                mlx_string_put(mlx, mlx_win, x * 64, y * 64, 0xFFFF00, "C");
+            } else if (tab[y][x] == EXIT) {
+                // Draw exit
+                mlx_string_put(mlx, mlx_win, x * 64, y * 64, 0xFF0000, "E");
+            }
+        }
+    }
+}
+
+void clear_map(void *mlx_win) {
+    void *win;
+    mlx_clear_window(mlx_win, win);
+}
+
+
+int main(int argc, char **argv) {
+    if (argc != 2) {
+        perror("Number of arguments not correct");
+        return EXIT_FAILURE;
+    }
+
+    int fd = open(argv[1], O_RDONLY);
+    if (fd < 0) {
+        perror("ERROR opening file");
+        return EXIT_FAILURE;
+    }
+
+    char *line = NULL;
+    char **map = NULL;
+    int rows = 0;
+    int cols = 0;
+
+    while ((line = get_next_line(fd)) != NULL) {
+        rows++;
+        if (cols == 0) {
+            cols = strlen(line) - 1;
+        }
+        free(line);
+    }
+
+    close(fd);
+    fd = open(argv[1], O_RDONLY);
+
+    if (fd < 0) {
+        perror("ERROR reopening file");
+        return EXIT_FAILURE;
+    }
+
+    map = (char **)malloc(sizeof(char *) * rows);
+    if (!map) {
+        perror("Error allocating memory for map");
+        close(fd);
+        return EXIT_FAILURE;
+    }
+
+    int r = 0;
+    while ((line = get_next_line(fd)) != NULL) {
+        map[r] = (char *)malloc(sizeof(char) * (cols + 1));
+        if (!map[r]) {
+            perror("Error allocating memory for map row");
+            close(fd);
+            free_map(map, r);
+            return EXIT_FAILURE;
+        }
+        strncpy(map[r], line, cols);
+        map[r][cols] = '\0';
+        free(line);
+        r++;
+    }
+
+    close(fd);
+
+    map_check_wall(map, rows, cols);
+    map_check_player(map, rows, cols);
+    map_check_collectables(map, rows, cols);
+    ghayermarghoub_fiha(map, rows, cols);
+    printf("Map checked and it is success!\n");
+
+     find_player_position(map, rows, cols);
+
+    char input;
+    int game_status = 0;
+    void *mlx;
+    void *mlx_win;
+    void *img;
+    char	*player_path = "player.xpm";
+    char    *wall_path = "wall.xpm";
+    char    *space_path = "empty.xpm";
+    char    *fruite_path = "fruite.xpm";
+    int i_w = 64;
+    int i_h = 64;
+    mlx = mlx_init();
+    img = mlx_xpm_file_to_image(mlx, player_path, &i_w, &i_h);
+    img = mlx_xpm_file_to_image(mlx, wall_path , &i_w , &i_h );
+    img = mlx_xpm_file_to_image(mlx, space_path , &i_w, &i_h);
+    img = mlx_xpm_file_to_image(mlx , fruite_path , &i_w ,&i_h);
+    mlx_win = mlx_new_window(mlx, 600, 600, "so_long");
+	mlx_loop(mlx);
+    while (game_status == 0) {
+        print_map(map, rows, cols);
+
+        printf("Use WASD to move ");
+
+        if (read(STDIN_FILENO, &input, 1) != 1) {
+            perror("Error reading input");
+            break;
+        }
+
+        game_status = move_player(map, rows, cols, input);
+
+        if (game_status == 2) {
+            break;
+        }
+
+        if (game_status == 0) {
+            printf("Invalid move\n");
+        }
+    }
+    free_map(map, rows);
+
+    return EXIT_SUCCESS;
+}
+
