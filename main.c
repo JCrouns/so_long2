@@ -224,7 +224,6 @@ int move_player(char **tab, int rows, int cols, char direction)
 
 void draw_map(void *mlx, void *mlx_win, char **tab, int rows, int cols)
 {
-    int x, y;
     int width = 64;
     int height = 64;
     void *img;
@@ -235,34 +234,24 @@ void draw_map(void *mlx, void *mlx_win, char **tab, int rows, int cols)
     char *collectable_path = "fruite.xpm";
     char *exit_path = "exit.xpm";
 
-    for (y = 0; y < rows; y++)
+    int y = 0;
+    while (y < rows)
     {
-        for (x = 0; x < cols; x++)
+        int x = 0;
+        while (x < cols)
         {
             if (tab[y][x] == WALL)
-            {
                 img = mlx_xpm_file_to_image(mlx, wall_path, &width, &height);
-            }
             else if (tab[y][x] == SPACE)
-            {
                 img = mlx_xpm_file_to_image(mlx, space_path, &width, &height);
-            }
             else if (tab[y][x] == PLAYER)
-            {
                 img = mlx_xpm_file_to_image(mlx, player_path, &width, &height);
-            }
             else if (tab[y][x] == COLLECTABLE)
-            {
                 img = mlx_xpm_file_to_image(mlx, collectable_path, &width, &height);
-            }
             else if (tab[y][x] == EXIT)
-            {
                 img = mlx_xpm_file_to_image(mlx, exit_path, &width, &height);
-            }
             else
-            {
                 img = NULL;
-            }
 
             if (img)
             {
@@ -270,13 +259,13 @@ void draw_map(void *mlx, void *mlx_win, char **tab, int rows, int cols)
                 mlx_destroy_image(mlx, img);
             }
             else
-            {
                 fprintf(stderr, "Error: Could not load image for tile %c\n", tab[y][x]);
-            }
+            
+            x++; // زيادة العداد يدوياً
         }
+        y++; // زيادة العداد يدوياً
     }
 }
-
 
 int key_hook(int keycode, void *param)
 {
